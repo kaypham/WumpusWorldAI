@@ -50,8 +50,9 @@ Agent::Action MyAI::getAction
 	// YOUR CODE BEGINS
 	// ======================================================================
 	
-	// mark current location as visited
+	// mark current location as visited, and safe
 	board.getCell(loc[0], loc[1])->visited = true;
+	board.getCell(loc[0], loc[1])->safe = true;
 	// find all adjacent cells to AI
 	adj_cells.erase(adj_cells.begin(), adj_cells.end());
 	board.getAdjacentCells(loc[0], loc[1], adj_cells);
@@ -137,6 +138,8 @@ Agent::Action MyAI::getAction
 		path.pop_back();
 		return BackTrack();
 	}
+	// if there are no safe, unexplored spaces next to agent, find a path to closest unexplored space and go there
+		
 	// decide what to do...
 	tuple<int,int> space = bestMove(adj_cells);
 	// turn and move foward to desired space...
@@ -358,11 +361,21 @@ void MyAI::RecordPath(int loc[2])
 
 void MyAI::addUnexplored(vector<Cell*> spaces)
 {
+	bool alreadyThere;
 	for(int i=0; i<spaces.size(); i++)
 	{
-		if(!spaces[i]->visited && (int)(spaces[i]->pitPresent)==0)
+		alreadyThere = false;
+		if(!spaces[i]->visited && spaces[i]->safe)
 		{
-			unexplored.push_back(spaces[i]);
+			for(int j=0; j<unexplored.size(); j++)
+			{
+				if(spaces[i] == unexplored[j]) alreadyThere = true;
+			}
+			if(!alreadyThere)
+			{
+				std::cout << "adding unexplored" << spaces[i]->x << " " << spaces[i]->y << std::endl;
+				unexplored.push_back(spaces[i]);
+			}
 		}
 	}
 }
@@ -371,9 +384,10 @@ void MyAI::filterUnexplored()
 {
 	for(int i=0; i<unexplored.size(); i++)
 	{
-		if(unexplored[i]->visited ||
-			(int)(unexplored[i]->pitPresent)>0)
+		if(unexplored[i]->visited || (int)(unexplored[i]->pitPresent)!=0
+					|| (int)(unexplored[i]->wumpusPresent)!=0)
 		{
+			std::cout << "removing unexplored" << unexplored[i]->x << " " << unexplored[i]->y << std::endl;
 			unexplored.erase(unexplored.begin()+i);
 		}
 	}
@@ -440,6 +454,53 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 	}
 }
 
+
+vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> solution)
+{
+	// initialize variables
+	Cell* currCell = getCell(start[0], start[1]);
+	vector<Cell*> adj_cells;
+
+	// push the currCell into the solution which only exists on this stack frame
+	solution.push_back(currCell);
+
+	if(start[0] != end[0] || start[1] != end[1])
+	{
+		getAdjacentCells(start[0], start[1], adj_cells);
+		// eliminate unwanted locations
+		for(vector<Cell*>::iterator i=adj_cells.begin(); i!=adj_cells.end(); i++)
+		{
+			// if an adjacent cell is not safe, don't consider it
+			if( !((*i)->safe) ){
+				adj_cells.erase(i);
+				continue;
+			}
+			// if an adjacent cell is already in the solution, don't consider it
+			for(int cell=0; cell<solution.size(); cell++)
+			{
+				if(solution[cell] == (*i))
+				{
+					adj_cells.erase(i);
+				}
+				break;
+			}
+		}
+		// for each valid adjacent cell, make a recursive call to check for solution
+		int loc[2];
+		for(int i=0; i<adj_cells.size(); i++)
+		{
+			// make a recursive call to getPath to continue searching for a path
+			loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
+			return getPath(loc, end, solution);
+		}	
+	}
+	else // the currCell is the goal Cell
+	{
+		return solution;
+	}
+}
+
+
 // code just for visualizing what the AI is doing
 void Map::printMap(int myX, int myY)
 {
@@ -494,6 +555,7 @@ void ProbHandle::calcProb(bool wumpusOrPit)
 		// reset wumpus probabilities to new value
 		for(std::vector<Cell*>::iterator i=suspects.begin(); i<suspects.end(); i++)
 		{
+			(*i)->safe = false;
 			(*i)->wumpusPresent = prob;
 		}
 	}
@@ -501,6 +563,7 @@ void ProbHandle::calcProb(bool wumpusOrPit)
 	{
 		for(std::vector<Cell*>::iterator i=suspects.begin(); i<suspects.end(); i++)
 		{
+			(*i)->safe = false;
 			(*i)->pitPresent = 100;
 		}
 	}
@@ -512,6 +575,13 @@ int ProbHandle::suspectNumber()
 	return suspects.size();
 }
 
+void ProbHandle::markSafe(Cell* cell)
+{
+	if((int)(cell->wumpusPresent)==0 && (int)(cell->pitPresent)==0)
+	{
+		cell->safe = true;
+	}
+}
 
 void ProbHandle::addSuspects(const std::vector<Cell*>& cells, bool wumpusOrPit)
 {
@@ -564,6 +634,7 @@ void ProbHandle::wumpusSuspects(const std::vector<Cell*>& cells)
 				for(int j=0; j<suspects.size(); j++)
 				{
 					suspects[j]->wumpusPresent = 0;
+					markSafe(suspects[j]);
 					if(cells[i] == suspects[j])
 					{
 						new_suspects.push_back(suspects[j]);
@@ -588,11 +659,13 @@ void ProbHandle::removeSuspects(const std::vector<Cell*>& cells, bool wumpusOrPi
 			{
 				if(!wumpusOrPit){
 					suspects[j]->pitPresent = 0;
+					markSafe(suspects[j]);
 				}
 				suspects.erase(suspects.begin()+j);
 				break;
 			}
 		}
+		// mark space as safe
 	}
 	
 	calcProb(wumpusOrPit);

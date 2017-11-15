@@ -58,6 +58,10 @@ public:
 	// returns cells of up to 4 adjacent locations on the Map to coordinates x and y
 	void getAdjacentCells(int x, int y, vector<Cell*>& cells);
 
+	// given a start and end location, returns a vector of Cell pointers representing a safe path from start to end.
+	// if path is not possible, return empty vector
+	vector<Cell*> getPath(int start[2], int end[2], vector<Cell*> solution);
+
 	// prints the map to the console for debugging purposes
 	void printMap(int myX, int myY);
 
@@ -88,6 +92,9 @@ public:
 
 	// returns the number of existing suspect cells
 	int suspectNumber();
+
+	// mark a cell as safe if there are no dangers present
+	void markSafe(Cell* cell);
 
 	// adds new cells to suspects and modifies the distributed probability among the cells
 	void addSuspects(const std::vector<Cell*>& cells, bool wumpusOrPit);	
@@ -134,6 +141,10 @@ public:
 	// functions for tracking unexplored options. If there are none, then quit
 	void addUnexplored(vector<Cell*> spaces);
 	void filterUnexplored();
+
+	// function to determine if current board location is a dead end.
+	// Checks if any adjacent space is safe and unexplored, if not then the current Cell is a dead end cell
+	bool deadEndCell(int loc[2]);
 
 	bool firstMove = true, isBackTracking = false;
 	Direction dir;
