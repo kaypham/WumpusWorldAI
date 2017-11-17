@@ -64,11 +64,14 @@ Agent::Action MyAI::getAction
 	{	
 		cout << "!!!!!!!!!!!      GOLD FOUND      !!!!!!!!!!!!!" << endl;
 		isBackTracking = true;
+		int destination[2]{0, 0};
+		board.getPath(loc, destination, shortest_path);	
+		shortest_path.erase(shortest_path.begin());
 		return GRAB;	// grab the gold
 	}
 	if (isBackTracking)
 	{
-		cout << "backtracking" << endl;
+		cout << "backtracking after finding gold" << endl;
 		return BackTrack();
 	}
 
@@ -134,8 +137,14 @@ Agent::Action MyAI::getAction
 	std::cout << unexplored.size() << std::endl;
 	if(unexplored.size() == 0) // set backtracking to true if there are no explorable spaces
 	{
+		if (shortest_path.size() == 0)
+		{
+			int destination[2]{0, 0};
+			board.getPath(loc, destination, shortest_path);	
+		}
 		isBackTracking = true;
-		path.pop_back();
+		shortest_path.erase(shortest_path.begin());
+		cout << "backtracking as there are no explorable spaces" << endl;
 		return BackTrack();
 	}
 	// if there are no safe, unexplored spaces next to agent, find a path to closest unexplored space and go there
@@ -331,11 +340,26 @@ Agent::Action MyAI::BackTrack()
 	}
 	else
 	{
-		tuple<int, int> prev_loc = make_tuple(path.back()->x, path.back()->y);
+		//tuple<int, int> prev_loc = make_tuple(path.back()->x, path.back()->y);
+		tuple<int, int> prev_loc = make_tuple(shortest_path.front()->x, shortest_path.front()->y);
 		Agent::Action myMove = turnAndMove(prev_loc);
 		if (myMove == FORWARD)
 		{
-			path.pop_back();
+			//path.pop_back();
+			shortest_path.erase(shortest_path.begin());
+		}
+		cout << "move: ";
+		switch(myMove)
+		{
+			case TURN_LEFT:
+				cout << "left" << endl;
+				break;
+			case TURN_RIGHT:
+				cout << "right" << endl;
+				break;
+			case FORWARD:
+				cout << "forward" << endl;
+				break;
 		}
 		return myMove;
 	}
@@ -455,7 +479,7 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 }
 
 
-vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> solution)
+vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
 {
 	// initialize variables
 	Cell* currCell = getCell(start[0], start[1]);
@@ -466,13 +490,14 @@ vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> solution)
 
 	if(start[0] != end[0] || start[1] != end[1])
 	{
+		vector<vector<Cell*>::iterator> to_be_deleted_cells;
 		getAdjacentCells(start[0], start[1], adj_cells);
 		// eliminate unwanted locations
 		for(vector<Cell*>::iterator i=adj_cells.begin(); i!=adj_cells.end(); i++)
 		{
 			// if an adjacent cell is not safe, don't consider it
-			if( !((*i)->safe) ){
-				adj_cells.erase(i);
+			if( !((*i)->safe) && (*i)->visited) {
+				to_be_deleted_cells.push_back(i);
 				continue;
 			}
 			// if an adjacent cell is already in the solution, don't consider it
@@ -480,10 +505,14 @@ vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> solution)
 			{
 				if(solution[cell] == (*i))
 				{
-					adj_cells.erase(i);
+					to_be_deleted_cells.push_back(i);
 				}
 				break;
 			}
+		}
+		for (int i = 0; i < to_be_deleted_cells.size(); ++i)
+		{
+			adj_cells.erase(to_be_deleted_cells[i]);
 		}
 		// for each valid adjacent cell, make a recursive call to check for solution
 		int loc[2];

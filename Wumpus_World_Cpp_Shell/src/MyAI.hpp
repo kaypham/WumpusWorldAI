@@ -60,7 +60,7 @@ public:
 
 	// given a start and end location, returns a vector of Cell pointers representing a safe path from start to end.
 	// if path is not possible, return empty vector
-	vector<Cell*> getPath(int start[2], int end[2], vector<Cell*> solution);
+	vector<Cell*> getPath(int start[2], int end[2], vector<Cell*> &solution);
 
 	// prints the map to the console for debugging purposes
 	void printMap(int myX, int myY);
@@ -159,6 +159,7 @@ public:
 	std::tuple<int, int> bestMove(vector<Cell*> moves);
 	// given a vector of cells representing positions for the AI, return the location of the best move
 	vector<Cell*> adj_cells;
+	std::vector<Cell*> shortest_path;
 	// ======================================================================
 	// YOUR CODE ENDS
 	// ======================================================================
