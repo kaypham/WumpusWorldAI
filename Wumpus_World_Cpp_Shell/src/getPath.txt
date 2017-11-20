@@ -1,0 +1,49 @@
+vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
+{
+	// initialize variables
+	Cell* currCell = getCell(start[0], start[1]);
+	vector<Cell*> adj_cells;
+
+	// push the currCell into the solution which only exists on this stack frame
+	solution.push_back(currCell);
+
+	if(start[0] != end[0] || start[1] != end[1])
+	{
+		vector<vector<Cell*>::iterator> to_be_deleted_cells;
+		getAdjacentCells(start[0], start[1], adj_cells);
+		// eliminate unwanted locations
+		for(vector<Cell*>::iterator i=adj_cells.begin(); i!=adj_cells.end(); i++)
+		{
+			// if an adjacent cell is not safe, don't consider it
+			if( !((*i)->safe) && (*i)->visited) {
+				to_be_deleted_cells.push_back(i);
+				continue;
+			}
+			// if an adjacent cell is already in the solution, don't consider it
+			for(int cell=0; cell<solution.size(); cell++)
+			{
+				if(solution[cell] == (*i))
+				{
+					to_be_deleted_cells.push_back(i);
+				}
+				break;
+			}
+		}
+		for (int i = 0; i < to_be_deleted_cells.size(); ++i)
+		{
+			adj_cells.erase(to_be_deleted_cells[i]);
+		}
+		// for each valid adjacent cell, make a recursive call to check for solution
+		int loc[2];
+		for(int i=0; i<adj_cells.size(); i++)
+		{
+			// make a recursive call to getPath to continue searching for a path
+			loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
+			return getPath(loc, end, solution);
+		}	
+	}
+	else // the currCell is the goal Cell
+	{
+		return solution;
+	}
+}

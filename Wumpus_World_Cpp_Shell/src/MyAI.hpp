@@ -40,6 +40,7 @@ struct Cell
 	int x, y;
 };
 
+
 class Map
 {
 private:
@@ -60,7 +61,14 @@ public:
 
 	// given a start and end location, returns a vector of Cell pointers representing a safe path from start to end.
 	// if path is not possible, return empty vector
-	vector<Cell*> getPath(int start[2], int end[2], vector<Cell*> &solution);
+	void getPath(int start[2], int end[2], vector<Cell*> &solution);
+
+	// uses a breadth first search to find the nearest safe and unvisited cell
+	Cell* findSafeUnvisited(int start[2]);
+
+	// returns true if the cell location has no adjacent safe and unvisited spaces
+	// returns false if it does.
+	bool deadEndCell(int loc[2]);
 
 	// prints the map to the console for debugging purposes
 	void printMap(int myX, int myY);
@@ -136,15 +144,10 @@ public:
 	Action TurnTowardsPrevLocation();
 	int evaluateMove(int* loc);
 	// takes as input a location for the AI and returns a value. The larger the number, the better the position
-	void RecordPath(int loc[2]);
 
 	// functions for tracking unexplored options. If there are none, then quit
 	void addUnexplored(vector<Cell*> spaces);
 	void filterUnexplored();
-
-	// function to determine if current board location is a dead end.
-	// Checks if any adjacent space is safe and unexplored, if not then the current Cell is a dead end cell
-	bool deadEndCell(int loc[2]);
 
 	bool firstMove = true, isBackTracking = false;
 	Direction dir;
@@ -153,8 +156,8 @@ public:
 	Map board;
 	ProbHandle wumpusProb;
 	ProbHandle pitProb;
-	std::vector<Cell*> path;
-	std::vector<Cell*> unexplored;
+	//std::vector<Cell*> unexplored;
+	int moveCount;
 
 	std::tuple<int, int> bestMove(vector<Cell*> moves);
 	// given a vector of cells representing positions for the AI, return the location of the best move

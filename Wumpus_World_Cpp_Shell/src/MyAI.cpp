@@ -49,15 +49,16 @@ Agent::Action MyAI::getAction
 	// ======================================================================
 	// YOUR CODE BEGINS
 	// ======================================================================
-	
+	moveCount++;	
 	// mark current location as visited, and safe
 	board.getCell(loc[0], loc[1])->visited = true;
 	board.getCell(loc[0], loc[1])->safe = true;
 	// find all adjacent cells to AI
 	adj_cells.erase(adj_cells.begin(), adj_cells.end());
 	board.getAdjacentCells(loc[0], loc[1], adj_cells);
-	board.printMap(loc[0], loc[1]);
 
+	cout << "MOVE: " << moveCount << "--------------------------------" << endl;
+	board.printMap(loc[0], loc[1]);
 	cout << "Cur cell is " << loc[0] << ", " << loc[1] << endl;	
 
 	if (glitter)
@@ -67,44 +68,8 @@ Agent::Action MyAI::getAction
 		int destination[2]{0, 0};
 		board.getPath(loc, destination, shortest_path);	
 		shortest_path.erase(shortest_path.begin());
+		cout << "shortest_path size" << shortest_path.size() << endl;
 		return GRAB;	// grab the gold
-	}
-	if (isBackTracking)
-	{
-		cout << "backtracking after finding gold" << endl;
-		return BackTrack();
-	}
-
-	RecordPath(loc);
-
-	if (stench)
-	{
-		std::cout << "There is a stench" << std::endl;
-		// get adjacent spaces and assign probabilities to them
-		wumpusProb.wumpusSuspects(adj_cells);
-		
-	}
-	else	// if no stench is detected...
-	{
-		// remove suspect spaces if possible
-		wumpusProb.removeSuspects(adj_cells, true); // true for wumpus
-	}
-	if (breeze)
-	{
-		std::cout << "There is a breeze " << std::endl;
-		pitProb.addSuspects(adj_cells, false); // false for pits
-	}
-	else // if no breeze...
-	{
-		// remove pit suspect spaces
-		pitProb.removeSuspects(adj_cells, false);
-	}
-	if(!stench && !breeze) // mark adjacent spaces totally safe
-	{
-		for(int i=0; i<adj_cells.size(); i++)
-		{
-			adj_cells[i]->safe = true;
-		}
 	}
 	if (bump)
 	{
@@ -130,25 +95,100 @@ Agent::Action MyAI::getAction
 				break;
 		}
 	}
-
-	// check for unexplored spaces, and filter out unexplored spaces of past
-	filterUnexplored();
-	addUnexplored(adj_cells);
-	std::cout << unexplored.size() << std::endl;
-	if(unexplored.size() == 0) // set backtracking to true if there are no explorable spaces
+	if (stench)
 	{
-		if (shortest_path.size() == 0)
+		std::cout << "There is a stench" << std::endl;
+		// get adjacent spaces and assign probabilities to them
+		wumpusProb.wumpusSuspects(adj_cells);
+		
+	}
+	else	// if no stench is detected...
+	{
+		// remove suspect spaces if possible
+		wumpusProb.removeSuspects(adj_cells, true); // true for wumpus
+	}
+	if (breeze)
+	{
+		std::cout << "There is a breeze " << std::endl;
+		//pitProb.addSuspects(adj_cells, false); // false for pits
+		for(int i=0; i<adj_cells.size(); i++)
 		{
-			int destination[2]{0, 0};
-			board.getPath(loc, destination, shortest_path);	
+			if(!adj_cells[i]->wall && !adj_cells[i]->safe && !adj_cells[i]->visited)
+			{
+				adj_cells[i]->safe = false;
+				adj_cells[i]->pitPresent = 100;
+			}
 		}
-		isBackTracking = true;
-		shortest_path.erase(shortest_path.begin());
-		cout << "backtracking as there are no explorable spaces" << endl;
+	}
+	else // if no breeze...
+	{
+		// remove pit suspect spaces
+		//pitProb.removeSuspects(adj_cells, false);
+		for(int i=0; i<adj_cells.size(); i++)
+		{
+			if(!adj_cells[i]->wall)
+			{
+				adj_cells[i]->pitPresent = 0;
+			}
+		}
+	}
+	if(!stench && !breeze) // mark adjacent spaces totally safe
+	{
+		for(int i=0; i<adj_cells.size(); i++)
+		{
+			if(!adj_cells[i]->wall)
+			{
+				adj_cells[i]->safe = true;
+			}
+		}
+	}
+	if (isBackTracking)
+	{
+		cout << "backtracking after finding gold" << endl;
 		return BackTrack();
 	}
+
+	// check for unexplored spaces, and filter out unexplored spaces of past
+	//filterUnexplored();
+	//addUnexplored(adj_cells);
+	//std::cout << unexplored.size() << std::endl;
+	//if(unexplored.size() == 0) // set backtracking to true if there are no explorable spaces
+	//{
+	//	if (shortest_path.size() == 0)
+	//	{
+	//		int destination[2]{0, 0};
+	//		board.getPath(loc, destination, shortest_path);	
+	//	}
+	//	isBackTracking = true;
+	//	shortest_path.erase(shortest_path.begin());
+	//	cout << "backtracking as there are no explorable spaces" << endl;
+	//	return BackTrack();
+	//}
+
 	// if there are no safe, unexplored spaces next to agent, find a path to closest unexplored space and go there
-		
+	if(board.deadEndCell(loc))
+	{
+		cout << "dead end cell, (starting path)" << endl;
+		Cell* dest = board.findSafeUnvisited(loc);
+		int destination[2];
+		if(dest == nullptr)	// there are no more explorable spaces, backtrack out to (0,0)
+		{
+			destination[0] = 0; 
+			destination[1] = 0;
+		}
+		else
+		{
+			destination[0] = dest->x;
+			destination[1] = dest->y;
+		}
+		shortest_path.erase(shortest_path.begin(), shortest_path.end());
+		board.getPath(loc, destination, shortest_path);
+		isBackTracking = true;
+		shortest_path.erase(shortest_path.begin());
+		cout << "moving to cell (" << destination[0] << ", " << destination[1] << ")" << endl;
+		return BackTrack();
+	}	
+
 	// decide what to do...
 	tuple<int,int> space = bestMove(adj_cells);
 	// turn and move foward to desired space...
@@ -166,10 +206,7 @@ Agent::Action MyAI::getAction
 			cout << "forward" << endl;
 			break;
 	}
-	if (isBackTracking && myMove == FORWARD)
-	{
-		path.pop_back();
-	}	
+	
 	return myMove;
 	// ======================================================================
 	// YOUR CODE ENDS
@@ -246,6 +283,7 @@ tuple<int,int> MyAI::bestMove(std::vector<Cell*> moves)
 
 Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 {
+	cout << "turnAndMove to " << get<0>(space) << ", " << get<1>(space) << endl;
 	//determine direction
 	// DIRECTION UP
 	if( get<0>(space) == loc[0] && get<1>(space) == loc[1]+1)
@@ -333,7 +371,7 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 // Note: agent can only climb out at cell (0, 0)
 Agent::Action MyAI::BackTrack()
 {
-	if (loc[0] == 0 && loc[1] == 0)
+	if (shortest_path.size() == 0)	// when the path is over
 	{
 		cout << "climbing out" << endl;
 		return CLIMB;
@@ -345,8 +383,14 @@ Agent::Action MyAI::BackTrack()
 		Agent::Action myMove = turnAndMove(prev_loc);
 		if (myMove == FORWARD)
 		{
-			//path.pop_back();
 			shortest_path.erase(shortest_path.begin());
+			if( 	shortest_path.size() == 0 && 
+				!(loc[0]==1 && loc[1]==0 && dir==LEFT) &&
+				!(loc[0]==0 && loc[1]==1 && dir==DOWN) ) // not trying to leave the board
+			{
+				cout << "(end of path)" << endl;
+				isBackTracking = false;
+			}
 		}
 		cout << "move: ";
 		switch(myMove)
@@ -365,57 +409,39 @@ Agent::Action MyAI::BackTrack()
 	}
 }
 
-void MyAI::RecordPath(int loc[2])
-{
-	if (firstMove)
-	{
-		path.push_back(board.getCell(loc[0], loc[1]));
-		firstMove = false;
-	}
-	else
-	{
-		int path_size = path.size();
-		Cell* prev_loc = path.at(path_size - 1);
-		if (!(prev_loc->x == loc[0] && prev_loc->y == loc[1]))
-		{
-			path.push_back(board.getCell(loc[0], loc[1]));
-		}
-	}
-}
+//void MyAI::addUnexplored(vector<Cell*> spaces)
+//{
+//	bool alreadyThere;
+//	for(int i=0; i<spaces.size(); i++)
+//	{
+//		alreadyThere = false;
+//		if(!spaces[i]->visited && spaces[i]->safe)
+//		{
+//			for(int j=0; j<unexplored.size(); j++)
+//			{
+//				if(spaces[i] == unexplored[j]) alreadyThere = true;
+//			}
+//			if(!alreadyThere)
+//			{
+//				std::cout << "adding unexplored" << spaces[i]->x << " " << spaces[i]->y << std::endl;
+//				unexplored.push_back(spaces[i]);
+//			}
+//		}
+//	}
+//}
 
-void MyAI::addUnexplored(vector<Cell*> spaces)
-{
-	bool alreadyThere;
-	for(int i=0; i<spaces.size(); i++)
-	{
-		alreadyThere = false;
-		if(!spaces[i]->visited && spaces[i]->safe)
-		{
-			for(int j=0; j<unexplored.size(); j++)
-			{
-				if(spaces[i] == unexplored[j]) alreadyThere = true;
-			}
-			if(!alreadyThere)
-			{
-				std::cout << "adding unexplored" << spaces[i]->x << " " << spaces[i]->y << std::endl;
-				unexplored.push_back(spaces[i]);
-			}
-		}
-	}
-}
-
-void MyAI::filterUnexplored()
-{
-	for(int i=0; i<unexplored.size(); i++)
-	{
-		if(unexplored[i]->visited || (int)(unexplored[i]->pitPresent)!=0
-					|| (int)(unexplored[i]->wumpusPresent)!=0)
-		{
-			std::cout << "removing unexplored" << unexplored[i]->x << " " << unexplored[i]->y << std::endl;
-			unexplored.erase(unexplored.begin()+i);
-		}
-	}
-}
+//void MyAI::filterUnexplored()
+//{
+//	for(int i=0; i<unexplored.size(); i++)
+//	{
+//		if(unexplored[i]->visited || (int)(unexplored[i]->pitPresent)!=0
+//					|| (int)(unexplored[i]->wumpusPresent)!=0)
+//		{
+//			std::cout << "removing unexplored" << unexplored[i]->x << " " << unexplored[i]->y << std::endl;
+//			unexplored.erase(unexplored.begin()+i);
+//		}
+//	}
+//}
 
 Map::Map()
 {
@@ -478,55 +504,132 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 	}
 }
 
-
-vector<Cell*> Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
+// depth first seach solution to retrieving a path from cell A to cell B
+void Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
 {
+	cout << "getPath" << " start: " << start[0] << " " << start[1];
+	cout << " end: " << end[0] << " " << end[1] << endl;
 	// initialize variables
 	Cell* currCell = getCell(start[0], start[1]);
 	vector<Cell*> adj_cells;
 
 	// push the currCell into the solution which only exists on this stack frame
+	cout << "pushing to solution" << endl;
 	solution.push_back(currCell);
 
 	if(start[0] != end[0] || start[1] != end[1])
 	{
-		vector<vector<Cell*>::iterator> to_be_deleted_cells;
+		cout << "not goal state" << endl;
 		getAdjacentCells(start[0], start[1], adj_cells);
-		// eliminate unwanted locations
-		for(vector<Cell*>::iterator i=adj_cells.begin(); i!=adj_cells.end(); i++)
-		{
-			// if an adjacent cell is not safe, don't consider it
-			if( !((*i)->safe) && (*i)->visited) {
-				to_be_deleted_cells.push_back(i);
-				continue;
-			}
-			// if an adjacent cell is already in the solution, don't consider it
-			for(int cell=0; cell<solution.size(); cell++)
-			{
-				if(solution[cell] == (*i))
-				{
-					to_be_deleted_cells.push_back(i);
-				}
-				break;
-			}
-		}
-		for (int i = 0; i < to_be_deleted_cells.size(); ++i)
-		{
-			adj_cells.erase(to_be_deleted_cells[i]);
-		}
+		cout << "got adjacent cells" << endl;
 		// for each valid adjacent cell, make a recursive call to check for solution
 		int loc[2];
+		bool alreadySearched;
 		for(int i=0; i<adj_cells.size(); i++)
 		{
+			cout << "adjacent " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
+			alreadySearched = false;
+			for(int j=0; j<solution.size(); j++)
+			{
+				if(adj_cells[i] == solution[j]) alreadySearched = true;
+			}
+			cout << "alreadySearched " << alreadySearched << endl;
 			// make a recursive call to getPath to continue searching for a path
-			loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
-			return getPath(loc, end, solution);
+			if(adj_cells[i]->safe && !alreadySearched)
+			{
+				cout << "making recursive call..." << endl;
+				loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
+				getPath(loc, end, solution);
+				
+				if(solution.back()->x == end[0] && solution.back()->y == end[1] )
+				{
+					cout << "returning solution 2" << endl;
+					return;
+				}
+			}
 		}	
 	}
 	else // the currCell is the goal Cell
 	{
-		return solution;
+		cout << "returning solution 1" << endl;
+		return;
 	}
+
+	cout << "popping from solution" << endl;
+	solution.pop_back();
+}
+
+
+// breadth first search for finding unvisited safe cells
+Cell* Map::findSafeUnvisited(int start[2])
+{
+	cout << "find safe unvisited" << endl;
+	vector<Cell*> fifo;
+	Cell* currCell;
+	fifo.push_back(getCell(start[0], start[1]));
+	vector<Cell*> adj_cells;
+	vector<Cell*> searched;
+
+	while(fifo.size() > 0)	// if there are still cells in the fifo, keep going...
+	{
+		cout << endl;
+		cout << "cell: " << fifo[0]->x << " " << fifo[0]->y << endl;
+		cout << "fifo size: " << fifo.size() << endl;
+		currCell = fifo[0];
+		searched.push_back(currCell);
+		adj_cells.erase(adj_cells.begin(), adj_cells.end());
+		getAdjacentCells(currCell->x, currCell->y, adj_cells);
+
+		bool alreadySearched;
+		for(int i=0; i<adj_cells.size(); i++)
+		{
+			cout << "adjacent " << adj_cells[i]->x << " " << adj_cells[i]->y;
+			cout << " safe" << adj_cells[i]->safe << " visited" << adj_cells[i]->visited << endl;
+			alreadySearched = false;
+			for(int j=0; j<searched.size(); j++)
+			{
+				if(adj_cells[i] == searched[j]) alreadySearched = true;
+			}
+			// don't consider unsafe cells, or already visited cells
+			if(adj_cells[i]->safe && !alreadySearched)
+			{
+				// if not a goal state...
+				if( !(adj_cells[i]->safe && !adj_cells[i]->visited) )
+				{
+					cout << "push to fifo " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
+					fifo.push_back(adj_cells[i]);
+				}
+				else // goal state achieved
+				{
+					cout << "goal state reached" << endl;
+					return adj_cells[i];
+				}
+		   	}
+		}
+		cout << "erasing " << fifo[0]->x << " " << fifo[0]->y << endl;
+		fifo.erase(fifo.begin());
+		cout << "size after erased " << fifo.size() << endl;
+	}
+	// no solution
+	return nullptr;
+}
+
+
+bool Map::deadEndCell(int loc[2])
+{
+	std::vector<Cell*> adj_cells;
+	getAdjacentCells(loc[0], loc[1], adj_cells);
+	bool deadEnd = true;
+	
+	for(int i=0; i<adj_cells.size(); i++)
+	{
+		if(adj_cells[i]->safe && !adj_cells[i]->visited)
+		{
+			// if we have a safe, unvisited space adjacent to the AI, the current cell is not a dead end
+			deadEnd = false;
+		}
+	}
+	return deadEnd;
 }
 
 
@@ -606,8 +709,9 @@ int ProbHandle::suspectNumber()
 
 void ProbHandle::markSafe(Cell* cell)
 {
-	if((int)(cell->wumpusPresent)==0 && (int)(cell->pitPresent)==0)
+	if((int)(cell->wumpusPresent)==0 && (int)(cell->pitPresent)==0 && !cell->wall)
 	{
+		cout << "marking cell safe" << endl;
 		cell->safe = true;
 	}
 }
@@ -663,7 +767,6 @@ void ProbHandle::wumpusSuspects(const std::vector<Cell*>& cells)
 				for(int j=0; j<suspects.size(); j++)
 				{
 					suspects[j]->wumpusPresent = 0;
-					markSafe(suspects[j]);
 					if(cells[i] == suspects[j])
 					{
 						new_suspects.push_back(suspects[j]);
