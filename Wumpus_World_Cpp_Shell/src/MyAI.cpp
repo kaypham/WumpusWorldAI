@@ -59,15 +59,22 @@ Agent::Action MyAI::getAction
 
 	cout << "MOVE: " << moveCount << "--------------------------------" << endl;
 	board.printMap(loc[0], loc[1]);
-	cout << "Cur cell is " << loc[0] << ", " << loc[1] << endl;	
+	cout << "Cur cell is " << loc[0] << ", " << loc[1] << endl;
+	cout << "Direction: " << dir << endl;	
 
 	if (glitter)
 	{	
 		cout << "!!!!!!!!!!!      GOLD FOUND      !!!!!!!!!!!!!" << endl;
 		isBackTracking = true;
 		int destination[2]{0, 0};
+		shortest_path.erase(shortest_path.begin(), shortest_path.end()); // have to clear the path
 		board.getPath(loc, destination, shortest_path);	
 		shortest_path.erase(shortest_path.begin());
+		cout << "path: ";
+		for(int i=0; i<shortest_path.size(); i++)
+		{
+			cout << "(" << shortest_path[i]->x << ", " << shortest_path[i]->y << ")" << endl;
+		}
 		cout << "shortest_path size" << shortest_path.size() << endl;
 		return GRAB;	// grab the gold
 	}
@@ -136,6 +143,7 @@ Agent::Action MyAI::getAction
 	{
 		for(int i=0; i<adj_cells.size(); i++)
 		{
+			cout << "marking cell " << adj_cells[i]->x << ", " << adj_cells[i]->y << " safe" << endl;
 			if(!adj_cells[i]->wall)
 			{
 				adj_cells[i]->safe = true;
@@ -291,6 +299,7 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 		switch(dir)
 		{
 			case UP:
+				cout << "moving up in turnAndMove" << endl;
 				loc[1] = loc[1]+1;
 				return FORWARD;
 			case DOWN:
@@ -316,6 +325,7 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 				dir = LEFT;
 				return TURN_RIGHT;
 			case LEFT:
+				cout << "moving left in turnAndMove" << endl;
 				loc[0] = loc[0]-1;
 				return FORWARD;
 			case RIGHT:
@@ -338,6 +348,7 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 				dir = UP;
 				return TURN_RIGHT;
 			case RIGHT:
+				cout << "moving right in turnAndMove" << endl;
 				loc[0] = loc[0]+1;
 				return FORWARD;
 		}	
@@ -351,6 +362,7 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 				dir = RIGHT;
 				return TURN_RIGHT;
 			case DOWN:
+				cout << "moving down in turnAndMove" << endl;
 				loc[1] = loc[1]-1;
 				return FORWARD;
 			case LEFT:
@@ -371,10 +383,15 @@ Agent::Action MyAI::turnAndMove(tuple<int,int> space)
 // Note: agent can only climb out at cell (0, 0)
 Agent::Action MyAI::BackTrack()
 {
-	if (shortest_path.size() == 0)	// when the path is over
+	cout << "running backtrack" << endl;
+	if (shortest_path.size() == 0 && loc[0]==0 && loc[1]==0) // when the path is over
 	{
 		cout << "climbing out" << endl;
 		return CLIMB;
+	}
+	else if(shortest_path.size() == 0)
+	{
+		isBackTracking = false;
 	}
 	else
 	{
@@ -384,13 +401,6 @@ Agent::Action MyAI::BackTrack()
 		if (myMove == FORWARD)
 		{
 			shortest_path.erase(shortest_path.begin());
-			if( 	shortest_path.size() == 0 && 
-				!(loc[0]==1 && loc[1]==0 && dir==LEFT) &&
-				!(loc[0]==0 && loc[1]==1 && dir==DOWN) ) // not trying to leave the board
-			{
-				cout << "(end of path)" << endl;
-				isBackTracking = false;
-			}
 		}
 		cout << "move: ";
 		switch(myMove)
