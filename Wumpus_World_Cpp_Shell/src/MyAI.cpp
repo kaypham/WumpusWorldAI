@@ -153,6 +153,7 @@ Agent::Action MyAI::getAction
 	if (isBackTracking)
 	{
 		cout << "backtracking after finding gold" << endl;
+		//Agent::Action action;
 		return BackTrack();
 	}
 
@@ -392,12 +393,17 @@ Agent::Action MyAI::BackTrack()
 	else if(shortest_path.size() == 0)
 	{
 		isBackTracking = false;
+		//Agent::Action myMove = turnAndMove(prev_loc);
+		return CLIMB;
 	}
 	else
 	{
+		cout << "not done with path" << endl;
 		//tuple<int, int> prev_loc = make_tuple(path.back()->x, path.back()->y);
 		tuple<int, int> prev_loc = make_tuple(shortest_path.front()->x, shortest_path.front()->y);
+		cout << "got a previous location" << endl;
 		Agent::Action myMove = turnAndMove(prev_loc);
+		cout << "got a move from turnAndMove" << endl;
 		if (myMove == FORWARD)
 		{
 			shortest_path.erase(shortest_path.begin());
@@ -419,39 +425,6 @@ Agent::Action MyAI::BackTrack()
 	}
 }
 
-//void MyAI::addUnexplored(vector<Cell*> spaces)
-//{
-//	bool alreadyThere;
-//	for(int i=0; i<spaces.size(); i++)
-//	{
-//		alreadyThere = false;
-//		if(!spaces[i]->visited && spaces[i]->safe)
-//		{
-//			for(int j=0; j<unexplored.size(); j++)
-//			{
-//				if(spaces[i] == unexplored[j]) alreadyThere = true;
-//			}
-//			if(!alreadyThere)
-//			{
-//				std::cout << "adding unexplored" << spaces[i]->x << " " << spaces[i]->y << std::endl;
-//				unexplored.push_back(spaces[i]);
-//			}
-//		}
-//	}
-//}
-
-//void MyAI::filterUnexplored()
-//{
-//	for(int i=0; i<unexplored.size(); i++)
-//	{
-//		if(unexplored[i]->visited || (int)(unexplored[i]->pitPresent)!=0
-//					|| (int)(unexplored[i]->wumpusPresent)!=0)
-//		{
-//			std::cout << "removing unexplored" << unexplored[i]->x << " " << unexplored[i]->y << std::endl;
-//			unexplored.erase(unexplored.begin()+i);
-//		}
-//	}
-//}
 
 Map::Map()
 {
