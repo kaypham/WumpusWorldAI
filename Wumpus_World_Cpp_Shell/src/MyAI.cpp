@@ -50,17 +50,46 @@ Agent::Action MyAI::getAction
 	// YOUR CODE BEGINS
 	// ======================================================================
 	moveCount++;	
+
+	cout << "MOVE: " << moveCount << "--------------------------------" << endl;
+	board.printMap(loc[0], loc[1]);
+	cout << "Cur cell is " << loc[0] << ", " << loc[1] << endl;
+	cout << "Direction: " << dir << endl;	
+
+
+	if (bump)
+	{
+		std::cout << "There is a wall" << std::endl;
+		// mark cells as walls if AI bumps into one
+		switch(dir)
+		{
+			case UP:
+				if(loc[1] != 9){
+					cout << "marking cell as wall" << endl;
+					for(int x=0; x<9; x++){
+						board.getCell(x, loc[1])->wall = true;
+					}
+				}
+				loc[1] = loc[1]-1;
+				break;
+			case RIGHT:
+				if(loc[0] != 9){
+					cout << "marking cell as wall" << endl;
+					for(int y=0; y<9; y++){
+						board.getCell(loc[0], y)->wall = true;
+					}
+				}
+				loc[0] = loc[0]-1;
+				break;
+		}
+	}
+
 	// mark current location as visited, and safe
 	board.getCell(loc[0], loc[1])->visited = true;
 	board.getCell(loc[0], loc[1])->safe = true;
 	// find all adjacent cells to AI
 	adj_cells.erase(adj_cells.begin(), adj_cells.end());
 	board.getAdjacentCells(loc[0], loc[1], adj_cells);
-
-	cout << "MOVE: " << moveCount << "--------------------------------" << endl;
-	board.printMap(loc[0], loc[1]);
-	cout << "Cur cell is " << loc[0] << ", " << loc[1] << endl;
-	cout << "Direction: " << dir << endl;	
 
 	if (glitter)
 	{	
@@ -77,42 +106,6 @@ Agent::Action MyAI::getAction
 		}
 		cout << "shortest_path size" << shortest_path.size() << endl;
 		return GRAB;	// grab the gold
-	}
-	if (bump)
-	{
-		std::cout << "There is a wall" << std::endl;
-		// mark cells as walls if AI bumps into one
-		switch(dir)
-		{
-			case UP:
-				if(loc[1] != 9){
-					cout << "marking cell as wall" << endl;
-					for(int x=0; x<9; x++){
-						board.getCell(x, loc[1]+1)->wall = true;
-					}
-				}
-				break;
-			case RIGHT:
-				if(loc[0] != 9){
-					cout << "marking cell as wall" << endl;
-					for(int y=0; y<9; y++){
-						board.getCell(loc[0]+1, y)->wall = true;
-					}
-				}
-				break;
-		}
-	}
-	if (stench)
-	{
-		std::cout << "There is a stench" << std::endl;
-		// get adjacent spaces and assign probabilities to them
-		wumpusProb.wumpusSuspects(adj_cells);
-		
-	}
-	else	// if no stench is detected...
-	{
-		// remove suspect spaces if possible
-		wumpusProb.removeSuspects(adj_cells, true); // true for wumpus
 	}
 	if (breeze)
 	{
@@ -138,6 +131,18 @@ Agent::Action MyAI::getAction
 				adj_cells[i]->pitPresent = 0;
 			}
 		}
+	}
+	if (stench)
+	{
+		std::cout << "There is a stench" << std::endl;
+		// get adjacent spaces and assign probabilities to them
+		wumpusProb.wumpusSuspects(adj_cells);
+		
+	}
+	else	// if no stench is detected...
+	{
+		// remove suspect spaces if possible
+		wumpusProb.removeSuspects(adj_cells, true); // true for wumpus
 	}
 	if(!stench && !breeze) // mark adjacent spaces totally safe
 	{
@@ -205,6 +210,12 @@ Agent::Action MyAI::getAction
 	cout << "move: ";
 	switch(myMove)
 	{
+		case GRAB:
+			cout << "grab" << endl;
+			break;
+		case CLIMB:
+			cout << "climb" << endl;
+			break;
 		case TURN_LEFT:
 			cout << "left" << endl;
 			break;
@@ -392,12 +403,11 @@ Agent::Action MyAI::BackTrack()
 	}
 	else if(shortest_path.size() == 0)
 	{
+		cout << "(end of path)" << endl;
 		isBackTracking = false;
 		//Agent::Action myMove = turnAndMove(prev_loc);
 		return CLIMB;
 	}
-	else
-	{
 		cout << "not done with path" << endl;
 		//tuple<int, int> prev_loc = make_tuple(path.back()->x, path.back()->y);
 		tuple<int, int> prev_loc = make_tuple(shortest_path.front()->x, shortest_path.front()->y);
@@ -422,7 +432,6 @@ Agent::Action MyAI::BackTrack()
 				break;
 		}
 		return myMove;
-	}
 }
 
 
@@ -475,8 +484,8 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 		{
 			cells.push_back( &map.at(x+1).at(y) );
 		}
-		// get Left
-		if(y < 9) // can't get left if 9
+		// get Up
+		if(y < 9) // can't get up if 9
 		{
 			cells.push_back( &map.at(x).at(y+1) );
 		}
@@ -490,43 +499,43 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 // depth first seach solution to retrieving a path from cell A to cell B
 void Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
 {
-	cout << "getPath" << " start: " << start[0] << " " << start[1];
-	cout << " end: " << end[0] << " " << end[1] << endl;
+	//cout << "getPath" << " start: " << start[0] << " " << start[1];
+	//cout << " end: " << end[0] << " " << end[1] << endl;
 	// initialize variables
 	Cell* currCell = getCell(start[0], start[1]);
 	vector<Cell*> adj_cells;
 
 	// push the currCell into the solution which only exists on this stack frame
-	cout << "pushing to solution" << endl;
+	//cout << "pushing to solution" << endl;
 	solution.push_back(currCell);
 
 	if(start[0] != end[0] || start[1] != end[1])
 	{
-		cout << "not goal state" << endl;
+		//cout << "not goal state" << endl;
 		getAdjacentCells(start[0], start[1], adj_cells);
-		cout << "got adjacent cells" << endl;
+		//cout << "got adjacent cells" << endl;
 		// for each valid adjacent cell, make a recursive call to check for solution
 		int loc[2];
 		bool alreadySearched;
 		for(int i=0; i<adj_cells.size(); i++)
 		{
-			cout << "adjacent " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
+			//cout << "adjacent " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
 			alreadySearched = false;
 			for(int j=0; j<solution.size(); j++)
 			{
 				if(adj_cells[i] == solution[j]) alreadySearched = true;
 			}
-			cout << "alreadySearched " << alreadySearched << endl;
+			//cout << "alreadySearched " << alreadySearched << endl;
 			// make a recursive call to getPath to continue searching for a path
 			if(adj_cells[i]->safe && !alreadySearched)
 			{
-				cout << "making recursive call..." << endl;
+				//cout << "making recursive call..." << endl;
 				loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
 				getPath(loc, end, solution);
 				
 				if(solution.back()->x == end[0] && solution.back()->y == end[1] )
 				{
-					cout << "returning solution 2" << endl;
+					//cout << "returning solution 2" << endl;
 					return;
 				}
 			}
@@ -534,11 +543,11 @@ void Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
 	}
 	else // the currCell is the goal Cell
 	{
-		cout << "returning solution 1" << endl;
+		//cout << "returning solution 1" << endl;
 		return;
 	}
 
-	cout << "popping from solution" << endl;
+	//cout << "popping from solution" << endl;
 	solution.pop_back();
 }
 
@@ -637,11 +646,11 @@ void Map::printMap(int myX, int myY)
 			else if(c->safe){
 				std::cout << "S ";
 			}
-			else if(c->pitPresent > 0){
-				std::cout << "P ";
-			}
 			else if(c->wumpusPresent > 0){
 				std::cout << "W ";
+			}
+			else if(c->pitPresent > 0){
+				std::cout << "P ";
 			}
 			else{
 				std::cout << "  ";
@@ -668,18 +677,19 @@ void ProbHandle::calcProb(bool wumpusOrPit)
 			prob = 100 / suspects.size();
 		}
 		// reset wumpus probabilities to new value
-		for(std::vector<Cell*>::iterator i=suspects.begin(); i<suspects.end(); i++)
+		for(int i=0; i<suspects.size(); i++)
 		{
-			(*i)->safe = false;
-			(*i)->wumpusPresent = prob;
+			cout << "marking" << suspects[i]->x << " " << suspects[i]->y << " wumpus" << endl;
+			suspects[i]->safe = false;
+			suspects[i]->wumpusPresent = prob;
 		}
 	}
 	else // pit
 	{
-		for(std::vector<Cell*>::iterator i=suspects.begin(); i<suspects.end(); i++)
+		for(int i=0; i<suspects.size(); i++)
 		{
-			(*i)->safe = false;
-			(*i)->pitPresent = 100;
+			suspects[i]->safe = false;
+			suspects[i]->pitPresent = 100;
 		}
 	}
 }
@@ -743,18 +753,38 @@ void ProbHandle::wumpusSuspects(const std::vector<Cell*>& cells)
 	else // logical AND
 	{
 		std::vector<Cell*> new_suspects;
+		std::vector<Cell*> removed_suspects;
+		bool suspectPresent;
 		for(int i=0; i<cells.size(); i++)
 		{
+			cout << "checking if " << cells[i]->x << " " << cells[i]->y << " is suspect: ";
 			if(!cells[i]->visited && !cells[i]->safe)
 			{
+				suspectPresent = false;
 				for(int j=0; j<suspects.size(); j++)
 				{
 					suspects[j]->wumpusPresent = 0;
 					if(cells[i] == suspects[j])
 					{
+						cout << "suspect match" << endl;
+						suspectPresent = true;
 						new_suspects.push_back(suspects[j]);
 					}
 				}
+				if(!suspectPresent)
+				{
+					removed_suspects.push_back(cells[i]);
+				}
+			}
+		}
+		// mark removed_suspects that are not pit suspects as safe
+		for(int i=0; i<removed_suspects.size(); i++)
+		{
+			cout << "removed suspect " << removed_suspects[i]->x << " " << removed_suspects[i]->y;
+			if(removed_suspects[i]->pitPresent == 0)
+			{
+				cout << " SAFE" << endl;
+				removed_suspects[i]->safe = true;
 			}
 		}
 		suspects = new_suspects;
