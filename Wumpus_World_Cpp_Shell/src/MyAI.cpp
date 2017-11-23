@@ -70,6 +70,7 @@ Agent::Action MyAI::getAction
 						board.getCell(x, loc[1])->wall = true;
 					}
 				}
+				if(isBackTracking) isBackTracking = false;
 				loc[1] = loc[1]-1;
 				break;
 			case RIGHT:
@@ -79,6 +80,7 @@ Agent::Action MyAI::getAction
 						board.getCell(loc[0], y)->wall = true;
 					}
 				}
+				if(isBackTracking) isBackTracking = false;
 				loc[0] = loc[0]-1;
 				break;
 		}
@@ -583,7 +585,7 @@ Cell* Map::findSafeUnvisited(int start[2])
 				if(adj_cells[i] == searched[j]) alreadySearched = true;
 			}
 			// don't consider unsafe cells, or already visited cells
-			if(adj_cells[i]->safe && !alreadySearched)
+			if(adj_cells[i]->safe && !alreadySearched && !adj_cells[i]->wall)
 			{
 				// if not a goal state...
 				if( !(adj_cells[i]->safe && !adj_cells[i]->visited) )
