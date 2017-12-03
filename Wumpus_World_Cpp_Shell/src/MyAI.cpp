@@ -752,12 +752,12 @@ void ProbHandle::wumpusSuspects(const std::vector<Cell*>& cells)
 		std::cout << "adding wumpus suspects for first time" << std::endl;
 		addSuspects(cells, true);
 	}
-	else // logical AND
+	else // LOGICAL AND
 	{
 		std::vector<Cell*> new_suspects;
 		std::vector<Cell*> removed_suspects;
 		bool suspectPresent;
-		for(int i=0; i<cells.size(); i++)
+		for(int i=0; i<cells.size(); i++)	// FIRST DOUBLE LOOP FOR FINDING ADJ-CELLS THAT ARE NOT SUSPECTS
 		{
 			cout << "checking if " << cells[i]->x << " " << cells[i]->y << " is suspect: ";
 			if(!cells[i]->visited && !cells[i]->safe)
@@ -771,12 +771,31 @@ void ProbHandle::wumpusSuspects(const std::vector<Cell*>& cells)
 						cout << "suspect match" << endl;
 						suspectPresent = true;
 						new_suspects.push_back(suspects[j]);
+						break;
 					}
 				}
 				if(!suspectPresent)
 				{
+					cout << "cell not present" << endl;
 					removed_suspects.push_back(cells[i]);
 				}
+			}
+		}
+		for(int i=0; i<suspects.size(); i++)	// SECOND DOUBLE LOOP FOR FINDING SUSPECTS THAT ARE NOT ADJ-CELLS
+		{
+			suspectPresent = false;
+			for(int j=0; j<cells.size(); j++)
+			{
+				if(cells[i] == suspects[j])
+				{
+					suspectPresent = true;
+					break;
+				}
+			}
+			if(!suspectPresent)
+			{
+				cout << "suspect not present" << endl;
+				removed_suspects.push_back(suspects[i]);
 			}
 		}
 		// mark removed_suspects that are not pit suspects as safe
@@ -804,8 +823,8 @@ void ProbHandle::removeSuspects(const std::vector<Cell*>& cells, bool wumpusOrPi
 		{
 			if(suspects[j]->x == cells[i]->x && suspects[j]->y == cells[i]->y)
 			{
-				if(!wumpusOrPit){
-					suspects[j]->pitPresent = 0;
+				if(wumpusOrPit){
+					suspects[j]->wumpusPresent = 0;
 					markSafe(suspects[j]);
 				}
 				suspects.erase(suspects.begin()+j);
