@@ -164,23 +164,6 @@ Agent::Action MyAI::getAction
 		return BackTrack();
 	}
 
-	// check for unexplored spaces, and filter out unexplored spaces of past
-	//filterUnexplored();
-	//addUnexplored(adj_cells);
-	//std::cout << unexplored.size() << std::endl;
-	//if(unexplored.size() == 0) // set backtracking to true if there are no explorable spaces
-	//{
-	//	if (shortest_path.size() == 0)
-	//	{
-	//		int destination[2]{0, 0};
-	//		board.getPath(loc, destination, shortest_path);	
-	//	}
-	//	isBackTracking = true;
-	//	shortest_path.erase(shortest_path.begin());
-	//	cout << "backtracking as there are no explorable spaces" << endl;
-	//	return BackTrack();
-	//}
-
 	// if there are no safe, unexplored spaces next to agent, find a path to closest unexplored space and go there
 	if(board.deadEndCell(loc))
 	{
@@ -611,13 +594,17 @@ Cell* Map::findSafeUnvisited(int start[2])
 
 bool Map::deadEndCell(int loc[2])
 {
+	//cout << "deadEndCell check" << endl;
 	std::vector<Cell*> adj_cells;
 	getAdjacentCells(loc[0], loc[1], adj_cells);
 	bool deadEnd = true;
 	
 	for(int i=0; i<adj_cells.size(); i++)
 	{
-		if(adj_cells[i]->safe && !adj_cells[i]->visited)
+		//cout << "CELL: " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
+		//cout << "safe: " << adj_cells[i]->safe << endl;
+		//cout << "visited: " << adj_cells[i]->visited << endl;
+		if(adj_cells[i]->safe && !adj_cells[i]->visited && !adj_cells[i]->wall)
 		{
 			// if we have a safe, unvisited space adjacent to the AI, the current cell is not a dead end
 			deadEnd = false;
