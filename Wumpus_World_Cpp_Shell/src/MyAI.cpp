@@ -99,7 +99,7 @@ Agent::Action MyAI::getAction
 		isBackTracking = true;
 		int destination[2]{0, 0};
 		shortest_path.erase(shortest_path.begin(), shortest_path.end()); // have to clear the path
-		board.getPath(loc, destination, shortest_path);	
+		board.findSafeUnvisited(loc, Map::zeroZero, shortest_path);	
 		shortest_path.erase(shortest_path.begin());
 		cout << "path: ";
 		for(int i=0; i<shortest_path.size(); i++)
@@ -168,23 +168,16 @@ Agent::Action MyAI::getAction
 	if(board.deadEndCell(loc))
 	{
 		cout << "dead end cell, (starting path)" << endl;
-		Cell* dest = board.findSafeUnvisited(loc);
-		int destination[2];
-		if(dest == nullptr)	// there are no more explorable spaces, backtrack out to (0,0)
-		{
-			destination[0] = 0; 
-			destination[1] = 0;
-		}
-		else
-		{
-			destination[0] = dest->x;
-			destination[1] = dest->y;
-		}
 		shortest_path.erase(shortest_path.begin(), shortest_path.end());
-		board.getPath(loc, destination, shortest_path);
+		board.findSafeUnvisited(loc, Map::safeUnvisited, shortest_path);
+		if(shortest_path.size() == 1)
+		{
+			shortest_path.erase(shortest_path.begin(), shortest_path.end());
+			board.findSafeUnvisited(loc, Map::zeroZero, shortest_path);
+		}
 		isBackTracking = true;
 		shortest_path.erase(shortest_path.begin());
-		cout << "moving to cell (" << destination[0] << ", " << destination[1] << ")" << endl;
+		//cout << "moving to cell (" << destination[0] << ", " << destination[1] << ")" << endl;
 		return BackTrack();
 	}	
 
@@ -481,81 +474,30 @@ void Map::getAdjacentCells(int x, int y, vector<Cell*>& cells)
 	}
 }
 
-// depth first seach solution to retrieving a path from cell A to cell B
-void Map::getPath(int start[2], int end[2], vector<Cell*> &solution)
-{
-	//cout << "getPath" << " start: " << start[0] << " " << start[1];
-	//cout << " end: " << end[0] << " " << end[1] << endl;
-	// initialize variables
-	Cell* currCell = getCell(start[0], start[1]);
-	vector<Cell*> adj_cells;
-
-	// push the currCell into the solution which only exists on this stack frame
-	//cout << "pushing to solution" << endl;
-	solution.push_back(currCell);
-
-	if(start[0] != end[0] || start[1] != end[1])
-	{
-		//cout << "not goal state" << endl;
-		getAdjacentCells(start[0], start[1], adj_cells);
-		//cout << "got adjacent cells" << endl;
-		// for each valid adjacent cell, make a recursive call to check for solution
-		int loc[2];
-		bool alreadySearched;
-		for(int i=0; i<adj_cells.size(); i++)
-		{
-			//cout << "adjacent " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
-			alreadySearched = false;
-			for(int j=0; j<solution.size(); j++)
-			{
-				if(adj_cells[i] == solution[j]) alreadySearched = true;
-			}
-			//cout << "alreadySearched " << alreadySearched << endl;
-			// make a recursive call to getPath to continue searching for a path
-			if(adj_cells[i]->safe && !alreadySearched)
-			{
-				//cout << "making recursive call..." << endl;
-				loc[0] = adj_cells[i]->x; loc[1] = adj_cells[i]->y;
-				getPath(loc, end, solution);
-				
-				if(solution.back()->x == end[0] && solution.back()->y == end[1] )
-				{
-					//cout << "returning solution 2" << endl;
-					return;
-				}
-			}
-		}	
-	}
-	else // the currCell is the goal Cell
-	{
-		//cout << "returning solution 1" << endl;
-		return;
-	}
-
-	//cout << "popping from solution" << endl;
-	solution.pop_back();
-}
-
 
 // breadth first search for finding unvisited safe cells
-Cell* Map::findSafeUnvisited(int start[2])
+void Map::findSafeUnvisited(int start[2], bool (*goalState)(Cell*), vector<Cell*>& solution)
 {
 	cout << "find safe unvisited" << endl;
-	vector<Cell*> fifo;
+	vector<Node*> fifo;
 	Cell* currCell;
-	fifo.push_back(getCell(start[0], start[1]));
 	vector<Cell*> adj_cells;
 	vector<Cell*> searched;
+
+	currCell = getCell(start[0], start[1]);
+	Node* headNode = new Node(nullptr, currCell); // NEW NODE IN TREE
+	Node* currNode = headNode;
+	fifo.push_back(currNode);
 
 	while(fifo.size() > 0)	// if there are still cells in the fifo, keep going...
 	{
 		cout << endl;
-		cout << "cell: " << fifo[0]->x << " " << fifo[0]->y << endl;
+		cout << "cell: " << fifo[0]->cell->x << " " << fifo[0]->cell->y << endl;
 		cout << "fifo size: " << fifo.size() << endl;
-		currCell = fifo[0];
-		searched.push_back(currCell);
+		currNode = fifo[0];
+		searched.push_back(currNode->cell);
 		adj_cells.erase(adj_cells.begin(), adj_cells.end());
-		getAdjacentCells(currCell->x, currCell->y, adj_cells);
+		getAdjacentCells(currNode->cell->x, currNode->cell->y, adj_cells);
 
 		bool alreadySearched;
 		for(int i=0; i<adj_cells.size(); i++)
@@ -571,24 +513,42 @@ Cell* Map::findSafeUnvisited(int start[2])
 			if(adj_cells[i]->safe && !alreadySearched && !adj_cells[i]->wall)
 			{
 				// if not a goal state...
-				if( !(adj_cells[i]->safe && !adj_cells[i]->visited) )
+				if(!goalState(adj_cells[i]))
 				{
 					cout << "push to fifo " << adj_cells[i]->x << " " << adj_cells[i]->y << endl;
-					fifo.push_back(adj_cells[i]);
+					Node* childNode = new Node(currNode, adj_cells[i]);
+					currNode->addChild(childNode); // ADD A CHILD NODE TO CURRENT
+					fifo.push_back(childNode);
 				}
 				else // goal state achieved
 				{
 					cout << "goal state reached" << endl;
-					return adj_cells[i];
+					Node* childNode = new Node(currNode, adj_cells[i]);
+					currNode->addChild(childNode); // ADD A CHILD NODE TO CURRENT
+
+					while(childNode != nullptr) // get the solution
+					{
+						cout << "adding to solution" << endl;
+						solution.insert(solution.begin(), childNode->cell);
+						childNode = childNode->parent;
+						cout << "reached end" << endl;
+					}
+					headNode->remove();
+					delete headNode;
+					return;
 				}
 		   	}
 		}
-		cout << "erasing " << fifo[0]->x << " " << fifo[0]->y << endl;
+		cout << "erasing " << fifo[0]->cell->x << " " << fifo[0]->cell->y << endl;
 		fifo.erase(fifo.begin());
 		cout << "size after erased " << fifo.size() << endl;
 	}
 	// no solution
-	return nullptr;
+	solution.erase(solution.begin(), solution.end());
+	solution.insert(solution.begin(), currCell);
+	headNode->remove();
+	delete headNode;
+	return;
 }
 
 

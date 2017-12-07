@@ -40,6 +40,37 @@ struct Cell
 	int x, y;
 };
 
+typedef bool (*goalState)(Cell*);
+
+
+struct Node
+{
+	Node* parent;
+	Cell* cell;
+	Node* children[4];
+
+	Node(Node* p, Cell* c)
+		: parent{p}, cell{c}, children{nullptr}
+	{}
+
+	void remove()
+	{
+		for(int i=0; i<4; i++){
+			if(children[i] != nullptr){
+				children[i]->remove();
+			}
+			delete children[i];
+		}
+	}
+
+	void addChild(Node* c)
+	{
+		int i=0;
+		while(children[i] != nullptr && i<4) i++;
+		if(i < 4) children[i] = c;
+	}
+};
+
 
 class Map
 {
@@ -59,12 +90,8 @@ public:
 	// returns cells of up to 4 adjacent locations on the Map to coordinates x and y
 	void getAdjacentCells(int x, int y, vector<Cell*>& cells);
 
-	// given a start and end location, returns a vector of Cell pointers representing a safe path from start to end.
-	// if path is not possible, return empty vector
-	void getPath(int start[2], int end[2], vector<Cell*> &solution);
-
 	// uses a breadth first search to find the nearest safe and unvisited cell
-	Cell* findSafeUnvisited(int start[2]);
+	void findSafeUnvisited(int start[2], bool (*goalState)(Cell*), vector<Cell*>& solution);
 
 	// returns true if the cell location has no adjacent safe and unvisited spaces
 	// returns false if it does.
@@ -73,10 +100,16 @@ public:
 	// prints the map to the console for debugging purposes
 	void printMap(int myX, int myY);
 
-	// After every move, call methods that can determine potential hazards in adjacent 
-	// judging from the map we have so far.
-	// Maybe not early in the game when the agent only makes a couple moves.
-	void Locate_Pit_And_Wumpus();
+
+	static bool safeUnvisited(Cell* cell)
+	{
+		return (cell->safe && !cell->visited);
+	}
+
+	static bool zeroZero(Cell* cell)
+	{
+		return (cell->x == 0 && cell->y == 0);
+	}
 
 };
 
